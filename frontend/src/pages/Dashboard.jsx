@@ -13,24 +13,10 @@ export default function Dashboard() {
   const { user } = useAuth()
   const [summary, setSummary] = useState(null)
   const [heatmap, setHeatmap] = useState([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [summaryRes, heatmapRes] = await Promise.all([
-          api.get('/api/progress/summary'),
-          api.get('/api/progress/heatmap'),
-        ])
-        setSummary(summaryRes.data)
-        setHeatmap(heatmapRes.data)
-      } catch {
-        // Fail silently, show empty state
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
+    api.get('/api/progress/summary').then((res) => setSummary(res.data)).catch(() => {})
+    api.get('/api/progress/heatmap').then((res) => setHeatmap(res.data)).catch(() => {})
   }, [])
 
   return (
@@ -47,24 +33,26 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard icon={<Brain className="text-primary" />} label="Total Quizzes" value={summary?.total_quizzes ?? 0} />
             <StatCard icon={<TrendingUp className="text-green-500" />} label="Avg Score" value={`${summary?.avg_score ?? 0}%`} />
-            <StatCard icon={<Flame className="text-orange-500" />} label="Current Streak" value={`${summary?.streak ?? 0} days`} />
-            <StatCard icon={<Award className="text-yellow-500" />} label="Achievements" value={summary?.achievements?.length ?? 0} />
+            <StatCard icon={<TrendingUp className="text-blue-500" />} label="Best Score" value={`${summary?.best_score ?? 0}%`} />
+            <StatCard icon={<Flame className="text-orange-500" />} label="Current Streak" value={`${summary?.streak ?? user?.streak ?? 0} days`} />
+            <StatCard icon={<Flame className="text-red-400" />} label="Longest Streak" value={`${summary?.longest_streak ?? user?.longest_streak ?? 0} days`} />
+            <StatCard icon={<Award className="text-yellow-500" />} label="Achievements" value={summary?.achievements?.length ?? user?.achievements?.length ?? 0} />
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-700 mb-4">Topic Performance</h3>
-              <ProgressChart data={summary?.topic_performance} />
+            <div className="bg-white rounded-xl shadow-sm p-6 overflow-hidden">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">Topic Accuracy</h3>
+              <ProgressChart data={summary?.topic_performance} type="topic" />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 overflow-hidden">
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Weekly Activity</h3>
               <ProgressChart data={summary?.weekly_activity} type="weekly" />
             </div>
           </div>
 
           {/* Heatmap */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-8 overflow-hidden">
             <h3 className="text-lg font-semibold text-gray-700 mb-4">Activity Heatmap</h3>
             <ActivityHeatmap data={heatmap} />
           </div>

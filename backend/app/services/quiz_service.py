@@ -1,6 +1,7 @@
 from datetime import datetime, date, timedelta
 from typing import List, Dict
 from collections import Counter
+import re
 
 
 def grade_quiz(questions: List[dict], user_answers: List[str]) -> dict:
@@ -11,17 +12,22 @@ def grade_quiz(questions: List[dict], user_answers: List[str]) -> dict:
     wrong_topics = []
 
     for i, question in enumerate(questions):
-        correct_answer = question["correct_answer"]
+        correct_answer = str(question.get("correct_answer", ""))
         correct_answers.append(correct_answer)
         explanations.append(question.get("explanation", ""))
 
-        user_answer = user_answers[i] if i < len(user_answers) else ""
+        user_answer = str(user_answers[i]) if i < len(user_answers) else ""
 
-        # Case-insensitive comparison for fill-in-the-blank
-        if question["type"] == "fillblank":
-            is_correct = user_answer.strip().lower() == correct_answer.strip().lower()
+        # For MCQ, extract just the leading letter from the user's answer
+        # e.g. "A. 16 bits" -> "A", then compare to correct_answer "A"
+        if question.get("type") == "mcq":
+            letter_match = re.match(r'^([A-Da-d])[\.\)]\s*', user_answer.strip())
+            normalized_user = letter_match.group(1).upper() if letter_match else user_answer.strip().upper()
+            normalized_correct = correct_answer.strip().upper()
+            is_correct = normalized_user == normalized_correct
         else:
-            is_correct = user_answer.strip() == correct_answer.strip()
+            # Normalize whitespace for comparison (handles "k,k" vs "k, k" etc.)
+            is_correct = re.sub(r'\s+', '', user_answer).lower() == re.sub(r'\s+', '', correct_answer).lower()
 
         if is_correct:
             correct_count += 1

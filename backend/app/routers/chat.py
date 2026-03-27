@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from bson import ObjectId
 from app.database import get_database
 from app.middleware.auth_middleware import get_current_user
@@ -9,17 +9,24 @@ from app.services.gemini_service import chat_response
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-
 class ChatMessage(BaseModel):
-    role: str  # "user" | "assistant"
+    role: str
     content: str
-
 
 class ChatRequest(BaseModel):
     message: str
     material_id: str
     conversation_history: List[ChatMessage] = []
 
+    @field_validator("message")
+    @classmethod
+    def message_length(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        if len(v) > 2000:
+            raise ValueError("Message cannot exceed 2000 characters")
+        return v
 
 @router.post("/message")
 async def send_message(
@@ -27,29 +34,25 @@ async def send_message(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    user_id = current_user["_id"]
+    user_id = str(current_user["_id"])
 
-    # Get material context
     try:
-        material = await db.materials.find_one(
-            {"_id": ObjectId(request.material_id), "user_id": user_id}
-        )
+        obj_id = ObjectId(request.material_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid material ID")
 
-    if not material:
+    material = await db.materials.find_one({"_id": obj_id})
+    if not material or material["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Material not found")
 
-    history = [msg.dict() for msg in request.conversation_history]
+    history = [{"role": msg.role, "content": msg.content} for msg in request.conversation_history]
 
-    # Get AI response
     response_text = await chat_response(
         message=request.message,
         context_text=material["extracted_text"],
         history=history,
     )
 
-    # Store messages
     now = datetime.utcnow()
     await db.messages.insert_many([
         {
@@ -70,6 +73,16 @@ async def send_message(
 
     return {"response": response_text}
 
+@router.delete("/history/{material_id}")
+async def clear_chat_history(
+    material_id: str,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    user_id = str(current_user["_id"])
+    result = await db.messages.delete_many({"user_id": user_id, "material_id": material_id})
+    return {"deleted": result.deleted_count}
+
 
 @router.get("/history/{material_id}")
 async def get_chat_history(
@@ -77,13 +90,14 @@ async def get_chat_history(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    user_id = current_user["_id"]
+    user_id = str(current_user["_id"])
     cursor = db.messages.find(
         {"user_id": user_id, "material_id": material_id}
-    ).sort("created_at", 1).limit(100)
+    ).sort("created_at", 1).limit(50)
 
     messages = []
     async for doc in cursor:
-        doc["id"] = str(doc.pop("_id"))
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
         messages.append(doc)
     return messages

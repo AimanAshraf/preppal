@@ -1,10 +1,7 @@
-import { useState } from 'react'
-
 export default function QuestionCard({ question, answer, onAnswer }) {
-  const [selectedOption, setSelectedOption] = useState(answer || '')
+  const selectedOption = answer || ''
 
   const handleChange = (value) => {
-    setSelectedOption(value)
     onAnswer(value)
   }
 

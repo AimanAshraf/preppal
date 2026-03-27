@@ -11,6 +11,7 @@ import QuizHub from './pages/QuizHub.jsx'
 import QuizScreen from './pages/QuizScreen.jsx'
 import QuizResult from './pages/QuizResult.jsx'
 import Settings from './pages/Settings.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 function App() {
   return (
@@ -18,18 +19,17 @@ function App() {
       <BrowserRouter>
         <Toaster position="top-right" />
         <Routes>
-          {/* All routes open for testing */}
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/quiz" element={<QuizHub />} />
-          <Route path="/quiz/:quizId" element={<QuizScreen />} />
-          <Route path="/quiz/:quizId/result" element={<QuizResult />} />
-          <Route path="/settings" element={<Settings />} />
 
-          {/* Default redirect */}
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/quiz" element={<ProtectedRoute><QuizHub /></ProtectedRoute>} />
+          <Route path="/quiz/:quizId" element={<ProtectedRoute><QuizScreen /></ProtectedRoute>} />
+          <Route path="/quiz/:quizId/result" element={<ProtectedRoute><QuizResult /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

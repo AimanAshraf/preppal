@@ -35,4 +35,5 @@ async def create_indexes(db):
     await db.quizzes.create_index("user_id")
     await db.quizzes.create_index([("user_id", 1), ("created_at", -1)])
     await db.messages.create_index([("user_id", 1), ("material_id", 1)])
+    await db.messages.create_index([("user_id", 1), ("material_id", 1), ("created_at", 1)])
     await db.progress.create_index("user_id", unique=True)

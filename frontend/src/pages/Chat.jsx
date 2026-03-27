@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
-import { Send, Bot, User, FileText } from 'lucide-react'
+import { Send, Bot, User, FileText, Trash2 } from 'lucide-react'
 import Sidebar from '../components/Sidebar.jsx'
 import Navbar from '../components/Navbar.jsx'
 import api from '../api/axios.js'
@@ -19,11 +19,23 @@ export default function Chat() {
 
   useEffect(() => {
     if (selectedMaterial) {
+      setMessages([])
       api.get(`/api/chat/history/${selectedMaterial}`).then((res) => {
         setMessages(res.data.map((m) => ({ role: m.role, content: m.content })))
       }).catch(() => setMessages([]))
     }
   }, [selectedMaterial])
+
+  const clearHistory = async () => {
+    if (!selectedMaterial || !confirm('Clear all chat history for this material?')) return
+    try {
+      await api.delete(`/api/chat/history/${selectedMaterial}`)
+      setMessages([])
+      toast.success('Chat history cleared')
+    } catch {
+      toast.error('Failed to clear history')
+    }
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -59,16 +71,27 @@ export default function Chat() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar title="AI Tutor Chat" />
         <div className="p-4 border-b bg-white">
-          <select
-            value={selectedMaterial || ''}
-            onChange={(e) => setSelectedMaterial(e.target.value || null)}
-            className="w-full max-w-sm border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Select a study material to chat about...</option>
-            {materials.map((m) => (
-              <option key={m.id} value={m.id}>{m.filename}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-3 max-w-sm">
+            <select
+              value={selectedMaterial || ''}
+              onChange={(e) => setSelectedMaterial(e.target.value || null)}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select a study material to chat about...</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.id}>{m.filename}</option>
+              ))}
+            </select>
+            {selectedMaterial && messages.length > 0 && (
+              <button
+                onClick={clearHistory}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                title="Clear chat history"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
@@ -123,13 +146,18 @@ export default function Chat() {
 
         {/* Input */}
         <form onSubmit={sendMessage} className="p-4 bg-white border-t flex gap-3">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={selectedMaterial ? 'Ask a question about your material...' : 'Select a material first'}
-            disabled={!selectedMaterial || sending}
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50"
-          />
+          <div className="flex-1 relative">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value.slice(0, 2000))}
+              placeholder={selectedMaterial ? 'Ask a question about your material...' : 'Select a material first'}
+              disabled={!selectedMaterial || sending}
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50"
+            />
+            {input.length > 1800 && (
+              <span className="absolute right-3 bottom-2 text-xs text-orange-500">{input.length}/2000</span>
+            )}
+          </div>
           <button
             type="submit"
             disabled={!selectedMaterial || !input.trim() || sending}

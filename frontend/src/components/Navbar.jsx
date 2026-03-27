@@ -1,4 +1,4 @@
-import { LogOut, User as UserIcon } from 'lucide-react'
+import { LogOut, User as UserIcon, Flame } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -15,6 +15,12 @@ export default function Navbar({ title }) {
     <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
       <h1 className="text-xl font-bold text-gray-800">{title}</h1>
       <div className="flex items-center gap-4">
+        {user?.streak > 0 && (
+          <div className="flex items-center gap-1 text-sm text-orange-500 font-semibold">
+            <Flame size={16} />
+            <span>{user.streak}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <UserIcon size={16} />
           <span>{user?.name}</span>

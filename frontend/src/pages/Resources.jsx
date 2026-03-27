@@ -84,6 +84,7 @@ export default function Resources() {
               type="file"
               accept=".pdf"
               onChange={handleUpload}
+              onClick={(e) => e.stopPropagation()}
               className="hidden"
             />
           </div>

@@ -1,23 +1,49 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { CheckCircle, XCircle, Award } from 'lucide-react'
+import { CheckCircle, XCircle, Award, Flame } from 'lucide-react'
 import StreakBadge from '../components/StreakBadge.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { useEffect, useState } from 'react'
+import api from '../api/axios.js'
 
 export default function QuizResult() {
   const { quizId } = useParams()
   const navigate = useNavigate()
+  const { refreshUser } = useAuth()
+  const [result, setResult] = useState(() => {
+    const stored = sessionStorage.getItem(`result_${quizId}`)
+    return stored ? JSON.parse(stored) : null
+  })
+  const [loading, setLoading] = useState(!result)
 
-  const result = JSON.parse(sessionStorage.getItem(`result_${quizId}`) || '{}')
-  const { score, total, percentage, correct_answers, explanations, weak_topics, new_achievements, questions } = result
+  useEffect(() => {
+    if (result) {
+      refreshUser()
+      return
+    }
+    // sessionStorage was cleared — fetch from server
+    api.get(`/api/quiz/${quizId}/result`)
+      .then((res) => {
+        setResult(res.data)
+        refreshUser()
+      })
+      .catch(() => navigate('/quiz'))
+      .finally(() => setLoading(false))
+  }, [])
 
-  if (!score !== undefined) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      </div>
+    )
+  }
+
+  if (!result || result.score === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-gray-600 mb-4">No results found</p>
-          <button
-            onClick={() => navigate('/quiz')}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-600"
-          >
+          <button onClick={() => navigate('/quiz')} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-600">
             Back to Quiz Hub
           </button>
         </div>
@@ -25,6 +51,7 @@ export default function QuizResult() {
     )
   }
 
+  const { score, total, percentage, correct_answers, explanations, weak_topics, new_achievements, questions, user_answers } = result
   const isPassed = percentage >= 70
 
   return (
@@ -33,17 +60,19 @@ export default function QuizResult() {
         {/* Score Card */}
         <div className={`rounded-2xl shadow-lg p-8 mb-8 text-center text-white ${isPassed ? 'bg-gradient-to-r from-green-500 to-green-600' : 'bg-gradient-to-r from-orange-500 to-orange-600'}`}>
           <div className="flex items-center justify-center mb-4">
-            {isPassed ? (
-              <CheckCircle size={64} />
-            ) : (
-              <XCircle size={64} />
-            )}
+            {isPassed ? <CheckCircle size={64} /> : <XCircle size={64} />}
           </div>
           <h1 className="text-4xl font-bold mb-2">{percentage}%</h1>
           <p className="text-lg mb-2">{score} out of {total} correct</p>
           <p className="text-sm opacity-90">
             {isPassed ? 'Great job! You passed!' : 'Keep practicing to improve!'}
           </p>
+          {result.streak > 0 && (
+            <div className="mt-4 inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium">
+              <Flame size={16} />
+              {result.streak} day streak
+            </div>
+          )}
         </div>
 
         {/* Achievements */}
@@ -99,7 +128,25 @@ export default function QuizResult() {
           <h2 className="text-xl font-bold text-gray-800 mb-6">Question Review</h2>
           <div className="space-y-4">
             {questions && questions.map((question, index) => {
-              const isCorrect = question.correct_answer === correct_answers[index]
+              const userAnswer = user_answers?.[index] || ''
+              const correctAnswer = correct_answers?.[index] || ''
+
+              // Mirror backend grading logic for display
+              let isCorrect = false
+              let displayCorrect = correctAnswer
+              if (question.type === 'mcq') {
+                const letterMatch = userAnswer.trim().match(/^([A-Da-d])[.)]\s*/)
+                const userLetter = letterMatch ? letterMatch[1].toUpperCase() : userAnswer.trim().toUpperCase()
+                isCorrect = userLetter === correctAnswer.trim().toUpperCase()
+                // Resolve correct letter to full option text
+                const correctOption = question.options?.find((o) =>
+                  o.trim().toUpperCase().startsWith(correctAnswer.trim().toUpperCase() + '.')
+                  || o.trim().toUpperCase().startsWith(correctAnswer.trim().toUpperCase() + ')')
+                )
+                displayCorrect = correctOption || correctAnswer
+              } else {
+                isCorrect = userAnswer.replace(/\s+/g, '').toLowerCase() === correctAnswer.replace(/\s+/g, '').toLowerCase()
+              }
               return (
                 <div
                   key={index}
@@ -115,15 +162,15 @@ export default function QuizResult() {
                         Question {index + 1}: {question.question}
                       </p>
                       <p className="text-sm text-gray-600 mt-2">
-                        <span className="font-medium">Your answer:</span> {correct_answers[index]}
+                        <span className="font-medium">Your answer:</span> {userAnswer || '(no answer)'}
                       </p>
                       {!isCorrect && (
                         <p className="text-sm text-green-700 mt-1 font-medium">
-                          <span>Correct answer:</span> {question.correct_answer}
+                          <span>Correct answer:</span> {displayCorrect || 'N/A'}
                         </p>
                       )}
                       <p className="text-sm text-gray-600 mt-2">
-                        <span className="font-medium">Explanation:</span> {explanations[index]}
+                        <span className="font-medium">Explanation:</span> {explanations?.[index]}
                       </p>
                     </div>
                     <div>

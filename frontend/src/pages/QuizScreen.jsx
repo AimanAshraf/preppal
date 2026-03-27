@@ -18,34 +18,28 @@ export default function QuizScreen() {
       const found = res.data.find((q) => q.id === quizId)
       if (found && found.completed_at) {
         navigate(`/quiz/${quizId}/result`, { replace: true })
-        return
       }
     }).catch(() => {})
-
-    // Fetch the full quiz with questions
-    const fetchQuiz = async () => {
-      try {
-        // We need to re-generate or get quiz by ID; use history which has questions omitted.
-        // Instead, store quiz in location.state or re-fetch; here we fall back to history approach
-        // Since /quiz/history excludes questions, we generate fresh. For a real app, add GET /quiz/:id
-        toast.error('Quiz not found. Please generate a new quiz.')
-        navigate('/quiz')
-      } catch {
-        navigate('/quiz')
-      }
-    }
   }, [quizId])
 
   useEffect(() => {
-    // Get quiz data from session storage (set during generation)
     const stored = sessionStorage.getItem(`quiz_${quizId}`)
     if (stored) {
       const data = JSON.parse(stored)
       setQuiz(data)
       setAnswers(new Array(data.questions.length).fill(''))
     } else {
-      toast.error('Quiz session expired. Please generate a new quiz.')
-      navigate('/quiz')
+      // Page was refreshed — fetch quiz from API
+      api.get(`/api/quiz/${quizId}`)
+        .then((res) => {
+          setQuiz(res.data)
+          setAnswers(new Array(res.data.questions.length).fill(''))
+          sessionStorage.setItem(`quiz_${quizId}`, JSON.stringify(res.data))
+        })
+        .catch(() => {
+          toast.error('Quiz not found or already completed.')
+          navigate('/quiz')
+        })
     }
   }, [quizId])
 
@@ -65,7 +59,7 @@ export default function QuizScreen() {
     setSubmitting(true)
     try {
       const res = await api.post(`/api/quiz/${quizId}/submit`, { answers })
-      sessionStorage.setItem(`result_${quizId}`, JSON.stringify({ ...res.data, questions: quiz.questions }))
+      sessionStorage.setItem(`result_${quizId}`, JSON.stringify({ ...res.data, questions: quiz.questions, user_answers: answers }))
       sessionStorage.removeItem(`quiz_${quizId}`)
       navigate(`/quiz/${quizId}/result`)
     } catch (err) {

@@ -8,8 +8,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE_MB: int = 10
+
+    def get_max_file_size_bytes(self) -> int:
+        return self.MAX_FILE_SIZE_MB * 1024 * 1024
 
     class Config:
         env_file = ".env"

@@ -1,14 +1,13 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from datetime import datetime
-from app.models.user import UserCreate, UserLogin, UserResponse, TokenResponse
+from app.models.user import UserCreate, UserLogin, UserResponse
 from app.services.auth_service import hash_password, verify_password, create_access_token
 from app.database import get_database
 from app.middleware.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register")
 async def register(user_data: UserCreate, db=Depends(get_database)):
     existing = await db.users.find_one({"email": user_data.email})
     if existing:
@@ -32,12 +31,11 @@ async def register(user_data: UserCreate, db=Depends(get_database)):
     }
 
     result = await db.users.insert_one(new_user)
-    new_user["_id"] = str(result.inserted_id)
-
+    
     token = create_access_token({"sub": user_data.email})
 
     user_response = UserResponse(
-        id=new_user["_id"],
+        id=str(result.inserted_id),
         email=new_user["email"],
         name=new_user["name"],
         created_at=new_user["created_at"],
@@ -45,10 +43,10 @@ async def register(user_data: UserCreate, db=Depends(get_database)):
         longest_streak=new_user["longest_streak"],
         achievements=new_user["achievements"],
     )
-    return TokenResponse(access_token=token, user=user_response)
+    return {"access_token": token, "token_type": "bearer", "user": user_response.dict()}
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 async def login(user_data: UserLogin, db=Depends(get_database)):
     user = await db.users.find_one({"email": user_data.email})
     if not user or not verify_password(user_data.password, user["hashed_password"]):
@@ -67,13 +65,13 @@ async def login(user_data: UserLogin, db=Depends(get_database)):
         longest_streak=user.get("longest_streak", 0),
         achievements=user.get("achievements", []),
     )
-    return TokenResponse(access_token=token, user=user_response)
+    return {"access_token": token, "token_type": "bearer", "user": user_response.dict()}
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
     return UserResponse(
-        id=current_user["_id"],
+        id=str(current_user["_id"]),
         email=current_user["email"],
         name=current_user["name"],
         created_at=current_user["created_at"],

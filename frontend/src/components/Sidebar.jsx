@@ -1,47 +1,72 @@
-import { Link, useLocation } from 'react-router-dom'
-import { BookOpen, Brain, MessageSquare, BarChart3, Settings } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, BookOpen, Library, Bot, Settings, LogOut, Leaf } from 'lucide-react'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const navItems = [
-  { path: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-  { path: '/resources', icon: BookOpen, label: 'Resources' },
-  { path: '/quiz', icon: Brain, label: 'Quizzes' },
-  { path: '/chat', icon: MessageSquare, label: 'Chat' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/quiz', icon: BookOpen, label: 'Quizzes' },
+  { path: '/resources', icon: Library, label: 'Resources' },
+  { path: '/chat', icon: Bot, label: 'AI Tutor' },
 ]
 
 export default function Sidebar() {
   const { pathname } = useLocation()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => { logout(); navigate('/signin') }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-primary rounded-lg">
-            <Brain size={24} className="text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-800">PrepPal</h1>
-        </div>
+    <aside className="w-56 bg-sidebar-bg border-r border-cream-dark flex flex-col shrink-0 h-screen">
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-cream-dark">
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <Leaf size={22} className="text-primary" />
+          <span className="font-serif text-xl font-bold text-primary-dark">Preppal</span>
+        </Link>
       </div>
 
-      <nav className="flex-1 py-6 px-3 space-y-2">
-        {navItems.map(({ path, icon: Icon, label }) => (
-          <Link
-            key={path}
-            to={path}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-              pathname === path
-                ? 'bg-primary text-white'
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <Icon size={20} />
-            <span className="font-medium">{label}</span>
-          </Link>
-        ))}
+      {/* Nav */}
+      <nav className="flex-1 py-4 px-3 space-y-1">
+        {navItems.map(({ path, icon: Icon, label }) => {
+          const active = pathname === path || pathname.startsWith(path + '/')
+          return (
+            <Link
+              key={path}
+              to={path}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                active
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-cream-dark hover:text-primary-dark'
+              }`}
+            >
+              <Icon size={18} />
+              {label}
+            </Link>
+          )
+        })}
       </nav>
 
-      <div className="p-4 border-t border-gray-200 text-xs text-gray-500 text-center">
-        <p>PrepPal v1.0</p>
+      {/* Bottom */}
+      <div className="px-3 pb-4 space-y-1 border-t border-cream-dark pt-3">
+        <Link
+          to="/settings"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            pathname === '/settings'
+              ? 'bg-primary text-white'
+              : 'text-gray-600 hover:bg-cream-dark hover:text-primary-dark'
+          }`}
+        >
+          <Settings size={18} />
+          settings
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-cream-dark hover:text-red-600 transition-all"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
       </div>
     </aside>
   )

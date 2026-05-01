@@ -11,9 +11,11 @@ async def connect_db():
     global client
     client = AsyncIOMotorClient(
         settings.MONGO_URI,
-        serverSelectionTimeoutMS=5000
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=10000,      # individual operation timeout
+        waitQueueTimeoutMS=5000,
     )
-    # Force immediate connection attempt
     await client.admin.command("ping")
     print(f"✅ URI being used: {settings.MONGO_URI[:40]}...")
 
